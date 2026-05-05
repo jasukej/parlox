@@ -3,6 +3,10 @@
 #include "value.h"
 #include "chunk.h"
 
+/**
+ * Takes compiled bytecode (chunks) and prints instruction names and offsets
+ * in human-readable format for debugging.
+ */
 void disassembleChunk(Chunk *chunk, const char *name) {
     printf("=== %s ===\n", name);
 
@@ -24,6 +28,15 @@ static int constantInstruction(const char* name, Chunk* chunk, int offset) {
     return offset + 2;
 }
 
+/*
+ * Dispatches the appropriate print helper based on instruction type.
+ * Output format per instruction:
+ *   OFFSET LINE OPCODE [OPERANDS]
+ * e.g.:
+ *   0000    1 OP_CONSTANT    0 '1.2'
+ *   0002    | OP_NEGATE
+ * The "|" means "same line as the previous instruction".
+ */
 int disassembleInstruction(Chunk *chunk, int offset) {
     printf("%04d ", offset);
 
@@ -65,8 +78,10 @@ int disassembleInstruction(Chunk *chunk, int offset) {
             return simpleInstruction("OP_DIVIDE", offset);
         case OP_NOT:
             return simpleInstruction("OP_NOT", offset);
-        case OP_RETURN: 
+        case OP_PRINT:
             return simpleInstruction("OP_PRINT", offset);
+        case OP_RETURN: 
+            return simpleInstruction("OP_RETURN", offset);
         default:
             printf("Unknown opcode %d", instruction);
             return offset + 1;

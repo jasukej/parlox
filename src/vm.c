@@ -73,8 +73,10 @@ static void concatenate() {
 	push(OBJ_VAL(result));
 }
 
-// Responsible for runtime execution of bytecode through mutating the value stack. 
-// These compiled instructions are read from our "memory" chunks. 
+/**
+ * Executes bytecode at runtime through mutating and reading from the value stack.
+ * These compiled instructions are read from our "memory" chunks. 
+ */
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
@@ -150,8 +152,6 @@ static InterpretResult run() {
 				printf("\n");
 				break;
 			case OP_RETURN: {
-				// Exit interpreter.
-				return INTERPRET_OK;
 			}
 		}
 	}

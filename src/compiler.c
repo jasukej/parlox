@@ -175,7 +175,7 @@ static void expression() {
 
 static void expressionStatement() {
     expression();
-    consume(TOKEN_SEMICOLON, "Except ';' after expression.");
+    consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
     emitByte(OP_POP);
 }
 
@@ -185,16 +185,16 @@ static void printStatement() {
     emitByte(OP_PRINT);
 }
 
+static void declaration() {
+    statement();
+}
+
 static void statement() {
     if (match(TOKEN_PRINT)) {
         printStatement();
     } else {
         expressionStatement();
     }
-}
-
-static void declaration() {
-    statement();
 }
 
 // Note that unlike other categories, binary is an infix parser function
@@ -254,10 +254,12 @@ static void unary() {
     }
 }
 
-// A table of rules following the Pratt parsing model, indexed by token type, 
-// Conveys (1) which function parses this token if it an expression prefix, 
-// (2) infix: what parses this token if it appears after a left-hand expr,
-// (3) precedence: the token's binding strength when used after an infix
+/**
+ * A table of rules following the Pratt parsing model, indexed by token type, 
+ * Conveys (1) which function parses this token if it an expression prefix, 
+ * (2) infix: what parses this token if it appears after a left-hand expr,
+ * (3) precedence: the token's binding strength when used after an infix
+ */
 static ParseRule rules[] = {
     [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
     [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
