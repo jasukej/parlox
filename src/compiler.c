@@ -31,7 +31,7 @@ typedef enum {
     PREC_PRIMARY
 } Precedence;
 
-typedef void (*ParseFn)();
+typedef void (*ParseFn)(bool canAssign);
 
 typedef struct {
     ParseFn prefix;
@@ -147,6 +147,19 @@ static void declaration();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precendence);
 
+static uint8_t identifierConstant(Token* name) {
+    return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
+}
+
+static uint8_t parseVariable(const char* errorMessage) {
+    consume(TOKEN_IDENTIFIER, errorMessage);
+    return identifierConstant(&parser.previous);
+}
+
+static void defineVariable(uint8_t global) {
+    emitBytes(OP_DEFINE_GLOBAL, global);
+}
+
 // Parse an expression until remaining tokens are higher in precedence
 // TODO: Handle mixfix operators e.g. ternary operators (?:)
 static void parsePrecedence(Precedence precedence) {
@@ -157,13 +170,18 @@ static void parsePrecedence(Precedence precedence) {
         return;
     }
 
-    prefixRule();
+    bool canAssign = precedence <= PREC_ASSIGNMENT;
+    prefixRule(canAssign);
 
     // if high enough precedence, treat next token as an infix operator and parse the infix and RHS
     while (precedence <= getRule(parser.current.type)->precedence) {
         advance();
         ParseFn infixRule = getRule(parser.previous.type)->infix;
-        infixRule();
+        infixRule(canAssign);
+    }
+
+    if (canAssign && match(TOKEN_EQUAL)) {
+        error("Invalid assignment target.");
     }
 }
 
@@ -171,6 +189,20 @@ static void parsePrecedence(Precedence precedence) {
 // https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 static void expression() {
     parsePrecedence(PREC_ASSIGNMENT);
+}
+
+static void varDeclaration() {
+    // global is assigned to the index into the constant table where the variable name lives
+    uint8_t global = parseVariable("Expect variable name.");
+
+    if (match(TOKEN_EQUAL)) {
+        expression();
+    } else {
+        emitByte(OP_NIL);
+    }
+    consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+
+    defineVariable(global);
 }
 
 static void expressionStatement() {
@@ -213,7 +245,11 @@ static void synchronize() {
 }
 
 static void declaration() {
-    statement();
+    if (match(TOKEN_VAR)) {
+        varDeclaration();
+    } else {
+        statement();
+    }
 
     if (parser.panicMode) synchronize();
 }
@@ -227,7 +263,7 @@ static void statement() {
 }
 
 // Note that unlike other categories, binary is an infix parser function
-static void binary() {
+static void binary(bool canAssign) {
     TokenType operatorType = parser.previous.type;
     ParseRule* rule = getRule(operatorType);
     parsePrecedence((Precedence)(rule->precedence+1));
@@ -247,7 +283,7 @@ static void binary() {
     }
 }
 
-static void literal() {
+static void literal(bool canAssign) {
     switch (parser.previous.type) {
         case TOKEN_FALSE: emitByte(OP_FALSE); break;
         case TOKEN_NIL: emitByte(OP_NIL); break;
@@ -256,22 +292,22 @@ static void literal() {
     }
 }
 
-static void grouping() {
+static void grouping(bool canAssign) {
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void number() {
+static void number(bool canAssign) {
     double value = strtod(parser.previous.start, NULL);
     emitConstant(NUMBER_VAL(value));
 }
 
-static void string() {
+static void string(bool canAssign) {
     // add offsets for quotation marks denoting a string
     emitConstant(OBJ_VAL(copyString(parser.previous.start + 1, parser.previous.length -2)));
 }
 
-static void unary() {
+static void unary(bool canAssign) {
     TokenType operatorType = parser.previous.type;
 
     parsePrecedence(PREC_UNARY);
@@ -281,6 +317,21 @@ static void unary() {
         case TOKEN_MINUS: emitByte(OP_NEGATE); break;
         default: return;
     }
+}
+
+static void namedVariable(Token name, bool canAssign) {
+    uint8_t arg = identifierConstant(&name);
+
+    if (canAssign && match(TOKEN_EQUAL)) {
+        expression();
+        emitBytes(OP_SET_GLOBAL, arg);
+    } else {
+        emitBytes(OP_GET_GLOBAL, arg);
+    }
+}
+
+static void variable(bool canAssign) {
+    namedVariable(parser.previous, canAssign);
 }
 
 /**
@@ -309,7 +360,7 @@ static ParseRule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
-    [TOKEN_IDENTIFIER]    = {string,   NULL,   PREC_NONE},
+    [TOKEN_IDENTIFIER]    = {variable,   NULL,   PREC_NONE},
     [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
     [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
     [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},

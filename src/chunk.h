@@ -10,6 +10,9 @@ typedef enum {
     OP_TRUE, // define explicitly instead of loading through OP_CONSTANT
     OP_FALSE,
     OP_POP,
+    OP_GET_GLOBAL,
+    OP_DEFINE_GLOBAL,
+    OP_SET_GLOBAL,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,
@@ -29,9 +32,19 @@ typedef struct {
 } LineInfo;
 
 /**
-* A dynamic array to hold bytecode and constants. 
-* For now, we maintain line numbering in our program through another allocation
-*/
+ * A compiled unit of bytecode. `code` is a flat array of bytes where each byte
+ * is either an opcode or an operand. Instructions are variable-width:
+ *
+ *   1-byte instructions (e.g. OP_ADD): just the opcode.
+ *   2-byte instructions (e.g. OP_CONSTANT): opcode + operand (1-byte index into `constants`).
+ *
+ * Example: the expression `1 + 2` compiles to:
+ *
+ *   code:      [OP_CONSTANT][0][OP_CONSTANT][1][OP_ADD]
+ *   constants: [1.0, 2.0]
+ *
+ * The VM reads bytes sequentially via an instruction pointer (vm.ip).
+ */
 typedef struct {
     int count;
     int capacity;
@@ -39,7 +52,7 @@ typedef struct {
     int linesCount;
     int linesCapacity;
     LineInfo* lines;
-    ValueArray constants;
+    ValueArray constants; // compile-time pool of literal values; accessed by index from bytecode operands
 } Chunk;
 
 void initChunk(Chunk* chunk);
