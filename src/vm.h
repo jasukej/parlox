@@ -3,13 +3,23 @@
 
 #include "chunk.h"
 #include "table.h"
+#include "object.h"
 #include "value.h"
 
-#define STACK_MAX 256
+#define FRAMES_MAX 64
+#define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
 
 typedef struct {
-	Chunk* chunk;
-	uint8_t* ip; // instruction pointer
+	ObjFunction* function;
+	uint8_t* ip; // in contrast to x86, the callee's return address is implicit
+	Value* slots;
+} CallFrame;
+
+typedef struct {
+	CallFrame frames[FRAMES_MAX];
+	int frameCount;
+
+	// TODO: guard against stack overflow
 	Value stack[STACK_MAX];
 	Value* stackTop;
 	// TODO: replace w a flat array indexed by compile-time slot number to avoid
