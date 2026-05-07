@@ -5,7 +5,7 @@
 #include "vm.h"
 
 // Compiles program from source to bytecode, and stores it in given chunk.
-// Returns whether compilation succeeded.
-bool compile(const char* source, Chunk* chunk);
+// Returns the associated function object with bytecode and metadata.
+ObjFunction* compile(const char* source, Chunk* chunk);
 
 #endif
