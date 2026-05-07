@@ -19,7 +19,6 @@ typedef struct {
 	CallFrame frames[FRAMES_MAX];
 	int frameCount;
 
-	// TODO: guard against stack overflow
 	Value stack[STACK_MAX];
 	Value* stackTop;
 	// TODO: replace w a flat array indexed by compile-time slot number to avoid
