@@ -15,7 +15,7 @@ void initTable(Table* table) {
 }
 
 void freeTable(Table* table) {
-    FREE_ARRAY(Entry, table->entries, table->count);
+    FREE_ARRAY(Entry, table->entries, table->capacity);
     initTable(table);
 }
 
@@ -117,7 +117,7 @@ ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t
         Entry* entry = &table->entries[index];
         if (entry->key == NULL) {
             if (IS_NIL(entry->value)) return NULL;
-        } else if (entry->key->length == length && entry->key->hash == hash && memcmp(entry->key->chars, chars, length)) {
+        } else if (entry->key->length == length && entry->key->hash == hash && memcmp(entry->key->chars, chars, length) == 0) {
             return entry->key;
         }
 

@@ -31,24 +31,19 @@ static void runtimeError(const char* format, ...) {
 	vfprintf(stderr, format, args);
 	va_end(args);
 	fputs("\n", stderr);
-
 	// Print the stack trace on previous (failed) instruction
 	for (int i = vm.frameCount - 1; i >= 0; i--) {
 		CallFrame* frame = &vm.frames[i];
 		ObjFunction* function = frame->closure->function;
 		size_t instruction = frame->ip - function->chunk.code - 1;
-		fprintf(stderr, "[line %d] in ", function->chunk.lines[instruction].line);
+		int line = getLine(&function->chunk, (int)instruction);
+		fprintf(stderr, "[line %d] in ", line);
 		if (function->name == NULL) {
 			fprintf(stderr, "script\n");
 		} else {
 			fprintf(stderr, "%s()\n", function->name->chars);
 		}
 	}
-
-	CallFrame* frame = &vm.frames[vm.frameCount - 1];
-	size_t instruction = frame->ip - frame->closure->function->chunk.code - 1;
-	int line = frame->closure->function->chunk.lines[instruction].line;
-	fprintf(stderr, "[line %d] in script\n", line);
 	resetStack();
 }
 
@@ -223,8 +218,6 @@ static InterpretResult run() {
 			case OP_CONSTANT: {
 				Value constant = READ_CONSTANT();
 				push(constant);
-				printValue(constant);
-				printf("\n");
 				break;
 			}
 			case OP_CLOSURE: {
@@ -279,6 +272,7 @@ static InterpretResult run() {
 					runtimeError("Undefined variable '%s'.", name->chars);
 					return INTERPRET_RUNTIME_ERROR;
 				}
+				break;
 			}
 			case OP_GET_UPVALUE: {
 				uint8_t slot = READ_BYTE();
