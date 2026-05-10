@@ -193,10 +193,10 @@ static void patchJump(int offset) {
 
     if (jump > UINT16_MAX) {
         error("Too much code to jump over.");
-
-        currentChunk()->code[offset] = (jump >> 8) & 0xff;
-        currentChunk()->code[offset + 1] = jump & 0xff;
     }
+
+    currentChunk()->code[offset] = (jump >> 8) & 0xff;
+    currentChunk()->code[offset + 1] = jump & 0xff;
 }
 
 static void initCompiler(Compiler* compiler, FunctionType type) {
@@ -205,6 +205,8 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
     compiler->type = type;
     compiler->localCount = 0;
     compiler->scopeDepth = 0;
+    compiler->innermostLoopStart = -1;
+    compiler->innermostLoopScopeDepth = 0;
     compiler->function = newFunction();
     current = compiler;
     if (type != TYPE_SCRIPT) {
@@ -264,7 +266,7 @@ static uint8_t identifierConstant(Token* name) {
 
 static bool identifiersEqual(Token* a, Token* b) {
     if (a->length != b->length) return false;
-    return memcmp(a->start, b->start, a->length);
+    return memcmp(a->start, b->start, a->length) == 0;
 }
 
 static int resolveLocal(Compiler* compiler, Token* name) {
@@ -311,6 +313,11 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
     if (local != -1) {
         compiler->enclosing->locals[local].isCaptured = true;
         return addUpvalue(compiler, (uint8_t)local, true);
+    }
+
+    int upvalue = resolveUpvalue(compiler->enclosing, name);
+    if (upvalue != -1) {
+        return addUpvalue(compiler, (uint8_t)upvalue, false);
     }
 
     return -1;
@@ -538,10 +545,6 @@ static void varDeclaration() {
 
     if (match(TOKEN_EQUAL)) {
         expression();
-    } else if (match(TOKEN_IF)){
-        ifStatement();
-    } else if (match(TOKEN_RETURN)) {
-        returnStatement();
     } else {
         emitByte(OP_NIL);
     }
@@ -570,7 +573,7 @@ static void forStatement() {
         exitJump = emitJump(OP_JUMP_IF_FALSE);
         emitByte(OP_POP);
     }
-    consume(TOKEN_SEMICOLON, "Expect ';'.");
+
     // Parse the increment expression, if it exists.
     if (!match(TOKEN_RIGHT_PAREN)) {
         int bodyJump = emitJump(OP_JUMP);
@@ -673,6 +676,10 @@ static void declaration() {
 static void statement() {
     if (match(TOKEN_PRINT)) {
         printStatement();
+    } else if (match(TOKEN_IF)) {
+        ifStatement();
+    } else if (match(TOKEN_RETURN)) {
+        returnStatement();
     } else if (match(TOKEN_FOR)) {
         forStatement();
     } else if (match(TOKEN_LEFT_BRACE)) {
@@ -808,7 +815,7 @@ static ParseRule rules[] = {
     [TOKEN_SLASH]         = {NULL,     binary, PREC_FACTOR},
     [TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
     [TOKEN_BANG]          = {unary,    NULL,   PREC_NONE},
-    [TOKEN_BANG_EQUAL]    = {NULL,     binary, PREC_NONE},
+    [TOKEN_BANG_EQUAL]    = {NULL,     binary, PREC_EQUALITY},
     [TOKEN_EQUAL]         = {NULL,     NULL,   PREC_NONE},
     [TOKEN_EQUAL_EQUAL]   = {NULL,     binary, PREC_EQUALITY},
     [TOKEN_GREATER]       = {NULL,     binary, PREC_COMPARISON},
@@ -816,7 +823,7 @@ static ParseRule rules[] = {
     [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
     [TOKEN_IDENTIFIER]    = {variable,   NULL,   PREC_NONE},
-    [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
+    [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
     [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
     [TOKEN_AND]           = {NULL,     and_,   PREC_AND},
     [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
