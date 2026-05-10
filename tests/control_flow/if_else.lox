@@ -1,0 +1,8 @@
+if (true) print "yes";  // expect: yes
+if (false) print "bad"; // (no output)
+
+if (1 > 2) {
+    print "wrong";
+} else {
+    print "right"; // expect: right
+}

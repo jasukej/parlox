@@ -8,9 +8,7 @@
 #include "scanner.h"
 #include "value.h"
 
-#ifndef DEBUG_PRINT_CODE
 #include "debug.h"
-#endif
 
 /**
  * Single-pass compiler that scans tokens and emits bytecode directly
@@ -223,7 +221,7 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
 static ObjFunction* endCompiler() {
     emitReturn();
     ObjFunction* function = current->function;
-#ifndef DEBUG_PRINT_CODE
+#ifdef DEBUG_PRINT_CODE
     if (!parser.hadError) {
         disassembleChunk(currentChunk(), function->name != NULL ? function->name->chars : "<script>");
     }

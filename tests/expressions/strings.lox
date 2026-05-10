@@ -1,0 +1,3 @@
+print "hello" + " " + "world"; // expect: hello world
+print "foo" == "foo";          // expect: true
+print "foo" == "bar";          // expect: false
