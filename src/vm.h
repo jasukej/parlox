@@ -1,5 +1,5 @@
-#ifndef clox_vm_h
-#define clox_vm_h
+#ifndef parlox_vm_h
+#define parlox_vm_h
 
 #include "chunk.h"
 #include "table.h"

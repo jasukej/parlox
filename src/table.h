@@ -1,5 +1,5 @@
-#ifndef hashtable_h
-#define hashtable_h
+#ifndef parlox_table_h
+#define parlox_table_h
 
 #include "common.h"
 #include "value.h"
