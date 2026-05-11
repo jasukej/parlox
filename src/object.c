@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "nursery.h"
 #include "memory.h"
 #include "object.h"
 #include "table.h"
@@ -13,9 +14,18 @@
     (type*)allocateObject(sizeof(type), objectType)
 
 static Obj* allocateObject(size_t size, ObjType type) {
-    Obj* object = (Obj*)reallocate(NULL, 0, size);
+    Obj* object = (Obj*)nurseryAlloc(&vm.nursery, size);
+    if (object == NULL) {
+        collectGarbage();
+        object = (Obj*)nurseryAlloc(&vm.nursery, size);
+        if (object == NULL) {
+            fprintf(stderr, "Out of memory after GC\n");
+            exit(1);
+        }
+    }
+    
     object->type = type;
-
+    object->isMarked = false;
     object->next = vm.objects;
     vm.objects = object;
     return object;
@@ -52,6 +62,7 @@ ObjNative* newNative(NativeFn function) {
 
 // (Similar to) a string constructor
 // TODO: Instead of two pointer indirections, store ObjString and char array contiguously with flexible array members.
+// TODO: Refactor strings to be GC-managed
 static ObjString* allocateString(char* chars, int length, uint32_t hash) {
     ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;

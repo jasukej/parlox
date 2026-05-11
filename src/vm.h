@@ -4,6 +4,7 @@
 #include "chunk.h"
 #include "table.h"
 #include "object.h"
+#include "nursery.h"
 #include "value.h"
 
 #define FRAMES_MAX 64
@@ -27,6 +28,7 @@ typedef struct {
 	Table strings;  // interning table; deduplicates heap-allocated strings for fast equality
 	ObjUpvalue* openUpvalues;
 	Obj* objects;
+	Nursery nursery;
 } VM;
 
 typedef enum {

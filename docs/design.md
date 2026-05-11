@@ -38,11 +38,15 @@ By abandoning thread-unsafe reference counting, this architecture unlocks true m
 Deep copying incurs a CPU and memory overhead proportional to the message size. However, literature (Armstrong, 2007) demonstrates that lock-free, shared-nothing architectures vastly outperform shared-memory models in highly concurrent, distributed-style workloads by eliminating lock contention and cache invalidation bottlenecks.
 
 ### Root tracking
-The hypothesis: to facilitate this memory and concurrency model without incurring limiting FFI overhead, the execution loop is strictly decoupled from the collection logic.
+A **root** in this context is a reference to a memory address that the system knows is in use. Currently, roots live implicitly in the VM; on the value stack, the globals hash table, and the linked list of open upvalues, as well as compiler temporaries. Anything not referenced by a root is immediately freed -- this is the GC's function.
 
-1. Bump allocator: Allocating an object in the Nursery requires only a single pointer addition. This maintains maximum throughput.
-2. Root tracking with a shadow stack: To provide the Rust GC with an immutable map of live memory, the C VM implements a Shadow Stack (Henderson, 2002). As the bytecode VM pushes object references onto its virtual execution stack, it simultaneously records these pointers in a contiguous C-array (the root set).
-3. The FFI collection boundary: The C VM only crosses the FFI boundary when the Nursery is exhausted. The VM yields execution, passing the Shadow Stack and Nursery pointers to Rust. Rust safely executes the complex tracing, copying, and tenuring logic, compacts the survivors, and returns a zeroed Nursery back to the C execution context.
+To facilitate this memory and concurrency model without incurring limiting FFI overhead, it is proposed that the execution loop should be strictly decoupled from the collection logic. 
+
+To fulfill these requirements, the design choices made cover the implementation of:
+
+1. **Bump allocator**: Allocating an object in the Nursery requires only a single pointer addition. This maintains maximum throughput.
+2. **Root tracking with a shadow stack**: To provide the Rust GC with an immutable map of live memory, the C VM implements a Shadow Stack (Henderson, 2002). As the bytecode VM pushes object references onto its virtual execution stack, it simultaneously records these pointers in a contiguous C-array (the root set).
+3. **A FFI collection boundary**: The C VM only crosses the FFI boundary when the Nursery is exhausted. The VM yields execution, passing the Shadow Stack and Nursery pointers to Rust. Rust safely executes the complex tracing, copying, and tenuring logic, compacts the survivors, and returns a zeroed Nursery back to the C execution context.
 
 Alternative considered: We rejected conservative stack scanning (e.g., the Boehm GC approach), which scans the raw C call stack for pointer-like values. While a shadow stack introduces a slight overhead to PUSH/POP instructions, conservative scanning is platform-dependent, and prone to memory leaks via false positives.
 

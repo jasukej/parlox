@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #ifndef NDEBUG_TRACE
 #define DEBUG_PRINT_CODE
