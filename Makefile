@@ -6,8 +6,13 @@ TARGET = out/binterpreter
 CPPCHECK ?= cppcheck
 CPPCHECK_FLAGS ?= --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^
+GC_LIB = gc/target/debug/libgc.a
+
+$(GC_LIB): 
+	cargo build --manifest-path gc/Cargo.toml
+
+$(TARGET): $(OBJ) $(GC_LIB)
+	$(CC) $(CFLAGS) -o $@ $^ -lpthread -ldl
 
 out/%.o: src/%.c | out
 	$(CC) $(CFLAGS) -c $< -o $@
