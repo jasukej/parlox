@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "table.h"
 #include "vm.h"
+#include "gc_bridge.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -57,6 +58,8 @@ static void defineNative(const char* name, NativeFn function) {
 }
 
 void initVM() {
+	ping();
+
 	resetStack();
 	vm.objects = NULL;
 	vm.grayStack = NULL;
