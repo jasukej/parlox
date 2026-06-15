@@ -124,3 +124,23 @@ ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t
         index = (index + 1) % table->capacity;
     }
 }
+
+
+/**
+ * Sweep the interned-string table, removing any entry whose key was not
+ * reached during the mark phase.
+ *
+ * This is called after ref-tracing and before compaction so that the
+ * string pointers are still valid. Leaves tombstones in place of removed
+ * entries to preserve open-address hashing.
+ */
+void tableRemoveWhite(Table* table) {
+    for (int i = 0; i < table->capacity; i++) {
+        Entry* entry = &table->entries[i];
+        if (entry->key != NULL && !entry->key->obj.isMarked) {
+            // Leave a tombstone: key=NULL, value=true (matches tableDelete convention)
+            entry->key = NULL;
+            entry->value = BOOL_VAL(true);
+        }
+    }
+}

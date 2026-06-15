@@ -154,6 +154,6 @@ static void traceReferences() {
 void collectGarbage() {
     markRoots();
     traceReferences();
-    // TODO: tableRemoveWhite(&vm.strings) — purge unreachable interned strings
+    tableRemoveWhite(&vm.strings);
     // TODO: compactNursery() — copy survivors to toSpace, update pointers
 }
